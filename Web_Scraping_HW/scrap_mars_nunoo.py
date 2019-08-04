@@ -2,16 +2,19 @@ from splinter import Browser
 from bs4 import BeautifulSoup
 import pandas as pd
 import datetime as dt
-​
+import requests
+import time
+import os
+
+
+
 ​
 def scrape_all():
-# ​splinter controls the website that you are going to
-    # Initiate headless driver for deployment
+
     browser = Browser("chrome", executable_path="chromedriver", headless=True)
     news_title, news_paragraph = mars_news(browser)
-# ​hold information that we are retrieve
-    # Run all scraping functions and store in dictionary.; this is what gets pushed to DB at the end of every scrap
-    data = {
+
+data = {
         "news_title": news_title,
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
@@ -21,32 +24,29 @@ def scrape_all():
         "last_modified": dt.datetime.now()
     }
 ​
-    # Stop webdriver and return data
+   
     browser.quit()
     return data
-# ​get the information out
+
 ​
 def mars_news(browser):
     url = "https://mars.nasa.gov/news/"
     browser.visit(url)
-# ​tells splinter to start.
-    # Get first list item and wait half a second if not immediately present; get info from inspector.
+
     browser.is_element_present_by_css("ul.item_list li.slide", wait_time=0.5)
 ​
     html = browser.html
     news_soup = BeautifulSoup(html, "html.parser")
-    # this selects creates a shortcut
-# ​bs (library=application that has set of predifined methods and ffunction that we can call)
-#  is reading website; splinter allows you to visit and open site; .get_text
+  
     try:
         slide_elem = news_soup.select_one("ul.item_list li.slide")
         news_title = slide_elem.find("div", class_="content_title").get_text()
         news_p = slide_elem.find(
             "div", class_="article_teaser_body").get_text()
-# ​have this "except" in case change in code
+
     except AttributeError:
         return None, None
-# ​this returns the information
+
     return news_title, news_p
 ​
 ​
@@ -54,22 +54,20 @@ def featured_image(browser):
     url = "https://www.jpl.nasa.gov/spaceimages/?search=&category=Mars"
     browser.visit(url)
 ​
-    # Find and click the full image button
+    
     full_image_elem = browser.find_by_id("full_image")
     full_image_elem.click()
 ​
-    # Find the more info button and click that
+    
     browser.is_element_present_by_text("more info", wait_time=0.5)
     more_info_elem = browser.find_link_by_partial_text("more info")
     more_info_elem.click()
 ​
-    # Parse the resulting html with soup; ask soup to do the following\
-    # create a varible called html
-# verbalize
+    
     html = browser.html
     img_soup = BeautifulSoup(html, "html.parser")
 ​
-    # Find the relative image url
+    
     img = img_soup.select_one("figure.lede a img")
 ​
     try:
@@ -78,7 +76,7 @@ def featured_image(browser):
     except AttributeError:
         return None
 ​
-    # Use the base url to create an absolute url
+   
     img_url = f"https://www.jpl.nasa.gov{img_url_rel}"
 ​
     return img_url
@@ -86,7 +84,7 @@ def featured_image(browser):
 ​
 def hemispheres(browser):
 ​
-    # A way to break up long strings
+    
     url = (
         "https://astrogeology.usgs.gov/search/"
         "results?q=hemisphere+enhanced&k1=target&v1=Mars"
@@ -94,19 +92,19 @@ def hemispheres(browser):
 ​
     browser.visit(url)
 ​
-    # Click the link, find the sample anchor, return the href
+    
     hemisphere_image_urls = []
     for i in range(4):
 ​
-        # Find the elements on each loop to avoid a stale element exception
+       
         browser.find_by_css("a.product-item h3")[i].click()
 ​
         hemi_data = scrape_hemisphere(browser.html)
 ​
-        # Append hemisphere object to list
+        
         hemisphere_image_urls.append(hemi_data)
 ​
-        # Finally, we navigate backwards
+        
         browser.back()
 ​
     return hemisphere_image_urls
@@ -119,11 +117,11 @@ def twitter_weather(browser):
     html = browser.html
     weather_soup = BeautifulSoup(html, "html.parser")
 ​
-    # First, find a tweet with the data-name `Mars Weather`
+  
     tweet_attrs = {"class": "tweet", "data-name": "Mars Weather"}
     mars_weather_tweet = weather_soup.find("div", attrs=tweet_attrs)
 ​
-    # Next, search within the tweet for the p tag containing the tweet text
+    
     mars_weather = mars_weather_tweet.find("p", "tweet-text").get_text()
 ​
     return mars_weather
@@ -131,16 +129,16 @@ def twitter_weather(browser):
 ​
 def scrape_hemisphere(html_text):
 ​
-    # Soupify the html text
+    
     hemi_soup = BeautifulSoup(html_text, "html.parser")
 ​
-    # Try to get href and text except if error.
+    
     try:
         title_elem = hemi_soup.find("h2", class_="title").get_text()
         sample_elem = hemi_soup.find("a", text="Sample").get("href")
 ​
     except AttributeError:
 ​
-        # Image error returns None for better front-end handling
+        
         title_elem = None
         sample_elem = None

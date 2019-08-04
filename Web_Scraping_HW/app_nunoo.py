@@ -7,11 +7,7 @@ app = Flask(__name__)
 # Use flask_pymongo to set up mongo connection; configuring FLASK
 app.config["MONGO_URI"] = "mongodb://localhost:27017/mars_app"
 mongo = PyMongo(app)
-# ​pymongo is what is communicating
-# Or set inline
-# mongo = PyMongo(app, uri="mongodb://localhost:27017/mars_app")
-​
-# ​tells flask when we hit (/ aka the index) do the following
+
 @app.route("/")
 def index():
     mars = mongo.db.mars.find_one()
